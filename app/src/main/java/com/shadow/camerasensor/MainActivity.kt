@@ -2,6 +2,7 @@ package com.shadow.camerasensor
 
 import android.Manifest
 import android.content.ContentValues
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Matrix
@@ -12,22 +13,32 @@ import android.util.Log
 import android.widget.Button
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageCaptureException
 import androidx.camera.core.ImageProxy
 import androidx.camera.view.CameraController
 import androidx.camera.view.LifecycleCameraController
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Camera
 import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.FlipCameraAndroid
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.outlined.Email
 import androidx.compose.material.icons.outlined.Home
@@ -37,25 +48,33 @@ import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.shadow.camerasensor.ui.theme.CameraSensorTheme
+import kotlin.or
+import kotlin.text.toFloat
 
 class MainActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3Api::class)
@@ -68,8 +87,16 @@ class MainActivity : ComponentActivity() {
         }
         setContent {
             CameraSensorTheme {
-
-                var selectedItemIndex by rememberSaveable { mutableIntStateOf(0) }
+                val controller = remember {
+                    LifecycleCameraController(applicationContext).apply {
+                        setEnabledUseCases(
+                            CameraController.IMAGE_CAPTURE or
+                                    CameraController.VIDEO_CAPTURE
+                        )
+                    }
+                }
+                val viewModel = viewModel<MainViewModel>()
+                var showFlash by remember { mutableStateOf(false) }
 
                 Surface(
                     modifier = Modifier.fillMaxSize(),
@@ -80,43 +107,85 @@ class MainActivity : ComponentActivity() {
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
+                                    .padding(20.dp)
                                     .padding(bottom = 20.dp),
-                                horizontalArrangement = Arrangement.SpaceEvenly
+                                horizontalArrangement = Arrangement.SpaceEvenly,
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Button(onClick = { TODO() }) {
-                                    Text("Gallery")
-                                }
-
-                                Button(onClick = { TODO() }) {
+                                IconButton(onClick = {
+                                    val intent = Intent(Intent.ACTION_VIEW, MediaStore.Images.Media.EXTERNAL_CONTENT_URI)
+                                    startActivity(intent)
+                                }) {
                                     Icon(
-                                        imageVector = Icons.Default.Camera,
-                                        contentDescription = null
+                                        imageVector = Icons.Default.PhotoLibrary,
+                                        contentDescription = "Gallery"
                                     )
                                 }
 
-                                Button(onClick = { TODO() }) {
-                                    Text("Flip Camera")
+                                IconButton(
+                                    onClick = {
+                                        takePhoto(
+                                            controller = controller,
+                                            onPhotoTaken = viewModel::onTakePhoto,
+                                            onFlash = { showFlash = true }
+                                        )
+                                    },
+                                    modifier = Modifier
+                                        .size(64.dp)
+                                        .background(Color.White, shape = CircleShape)
+                                        .padding(8.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Camera,
+                                        contentDescription = "Camera",
+                                        tint = Color.Black
+                                    )
+                                }
+
+                                IconButton(onClick = {
+                                    controller.cameraSelector =
+                                        if (controller.cameraSelector == CameraSelector.DEFAULT_BACK_CAMERA) {
+                                            CameraSelector.DEFAULT_FRONT_CAMERA
+                                        } else CameraSelector.DEFAULT_BACK_CAMERA
+                                }) {
+                                    Icon(
+                                        imageVector = Icons.Default.FlipCameraAndroid,
+                                        contentDescription = "Flip Camera"
+                                    )
                                 }
                             }
                         }
                     ) { innerPadding ->
-                        val controller = remember {
-                            LifecycleCameraController(applicationContext).apply {
-                                setEnabledUseCases(
-                                    CameraController.IMAGE_CAPTURE or
-                                            CameraController.VIDEO_CAPTURE
+
+                        Box(modifier = Modifier.fillMaxSize()) {
+                            Column(
+                                modifier = Modifier.padding(innerPadding)
+                            ) {
+                                CameraPreview(
+                                    controller = controller,
+                                    modifier = Modifier
+                                        .fillMaxSize()
                                 )
                             }
-                        }
 
-                        Column(
-                            modifier = Modifier.padding(innerPadding)
-                        ) {
-                            CameraPreview(
-                                controller = controller,
-                                modifier = Modifier
-                                    .fillMaxSize()
-                            )
+                            AnimatedVisibility(
+                                visible = showFlash,
+                                enter = fadeIn(animationSpec = tween(100)),
+                                exit = fadeOut(animationSpec = tween(300))
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .background(Color.Black)
+                                )
+                            }
+
+                            LaunchedEffect(showFlash) {
+                                if (showFlash) {
+                                    kotlinx.coroutines.delay(400)
+                                    showFlash = false
+                                }
+                            }
                         }
                     }
                 }
@@ -128,7 +197,7 @@ class MainActivity : ComponentActivity() {
         val contentValues = ContentValues().apply {
             put(MediaStore.Images.Media.DISPLAY_NAME, "photo_${System.currentTimeMillis()}.jpg")
             put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
-            put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES)
+            put(MediaStore.Images.Media.RELATIVE_PATH, "${Environment.DIRECTORY_DCIM}/Camera")
         }
 
         val resolver = applicationContext.contentResolver
@@ -149,7 +218,8 @@ class MainActivity : ComponentActivity() {
 
     private fun takePhoto(
         controller: LifecycleCameraController,
-        onPhotoTaken: (Bitmap) -> Unit
+        onPhotoTaken: (Bitmap) -> Unit,
+        onFlash: () -> Unit
     ) {
         controller.takePicture(
             ContextCompat.getMainExecutor(applicationContext),
@@ -170,9 +240,9 @@ class MainActivity : ComponentActivity() {
                         true
                     )
 
-
                     saveImageToGallery(rotatedBitmap)
                     onPhotoTaken(rotatedBitmap)
+                    onFlash()
                 }
 
                 override fun onError(exception: ImageCaptureException) {
@@ -182,6 +252,7 @@ class MainActivity : ComponentActivity() {
             }
         )
     }
+
 
     private fun hasRequiredPermissions(): Boolean {
         return CAMERAX_PERMISSIONS.all {
