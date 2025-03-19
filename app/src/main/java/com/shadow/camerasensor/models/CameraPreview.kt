@@ -1,4 +1,4 @@
-package com.shadow.camerasensor
+package com.shadow.camerasensor.models
 
 import androidx.camera.view.LifecycleCameraController
 import androidx.camera.view.PreviewView
