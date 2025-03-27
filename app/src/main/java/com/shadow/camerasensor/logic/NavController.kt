@@ -14,26 +14,29 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.shadow.camerasensor.pages.PhotoTaken
 import com.shadow.camerasensor.pages.HomePage
+import com.shadow.camerasensor.ui.theme.CameraSensorTheme
 
 @Composable
 fun NavController(applicationContext: Context) {
     val navController = rememberNavController()
 
-    Surface(color = MaterialTheme.colorScheme.background) {
-        NavHost(
-            navController = navController,
-            startDestination = "home"
-        ) {
-            composable("home") {
-                val homePage = HomePage(applicationContext)
-                homePage.StartScreen(navController)
-            }
-            composable("photoTaken/{bitmap}") { backStackEntry ->
-                val encodedBitmap = backStackEntry.arguments?.getString("bitmap") ?: ""
-                val decodedBytes = Base64.decode(encodedBitmap, Base64.DEFAULT)
-                val bitmap = BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.size)
+    CameraSensorTheme {
+        Surface(color = MaterialTheme.colorScheme.background) {
+            NavHost(
+                navController = navController,
+                startDestination = "home"
+            ) {
+                composable("home") {
+                    val homePage = HomePage(applicationContext)
+                    homePage.StartScreen(navController)
+                }
+                composable("photoTaken/{bitmap}") { backStackEntry ->
+                    val encodedBitmap = backStackEntry.arguments?.getString("bitmap") ?: ""
+                    val decodedBytes = Base64.decode(encodedBitmap, Base64.DEFAULT)
+                    val bitmap = BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.size)
 
-                PhotoTaken(bitmap, applicationContext)
+                    PhotoTaken(bitmap, applicationContext)
+                }
             }
         }
     }

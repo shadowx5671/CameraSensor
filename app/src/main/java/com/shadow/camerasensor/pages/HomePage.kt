@@ -1,11 +1,9 @@
 package com.shadow.camerasensor.pages
 
 import android.content.Context
-import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.Matrix
 import android.net.Uri
-import android.provider.MediaStore
 import android.util.Base64
 import android.util.Log
 import androidx.camera.core.CameraSelector
@@ -85,18 +83,13 @@ class HomePage(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(20.dp)
-                                .padding(bottom = 20.dp),
+                                .padding(bottom = 50.dp),
                             horizontalArrangement = Arrangement.SpaceEvenly,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Button(
                                 onClick = {
-                                    val intent = Intent(Intent.ACTION_VIEW).apply {
-                                        data = MediaStore.Images.Media.EXTERNAL_CONTENT_URI
-                                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                                    }
-                                    applicationContext.startActivity(intent)
+                                    TODO()
                                 }) {
                                 Icon(
                                     imageVector = Icons.Default.PhotoLibrary,
@@ -145,10 +138,10 @@ class HomePage(
                         }
                     }
                 ) { innerPadding ->
-
                     Box(modifier = Modifier.fillMaxSize()) {
                         Column(
-                            modifier = Modifier.padding(innerPadding)
+                            modifier = Modifier.padding(innerPadding),
+                            verticalArrangement = Arrangement.Center
                         ) {
                             CameraPreview(
                                 controller = controller,
